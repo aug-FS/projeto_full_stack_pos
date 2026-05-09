@@ -28,3 +28,7 @@ Thumbs.db
 # Docker database volume
 /database/mysql
 /database/mysql/*
+
+# Local Docker volumes
+/database/mysql
+/server/logs
