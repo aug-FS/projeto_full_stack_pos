@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+    escola_app_php:
+        container_name: 'escola_app_php'
+        build:
+            context: .
+            dockerfile: docker/Dockerfile
+        image: escola_app_php
+        working_dir: /var/www
+        volumes:
+        - '.:/var/www'
+        - './docker/php.ini:/usr/local/etc/php/conf.d/custom.ini'
+        - './docker/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf'
+        - './server/conf.d/:/etc/nginx/conf.d/'
+        - './server/logs/:/var/log/nginx/'
+        restart: unless-stopped
+        ports:
+            - "5173:5173"
+            - "80:80"
+        env_file:
+            - ./.env.local
+        depends_on:
+            - mysql
+
+    mysql:
+        container_name: escola_app_db
+        image: mysql:8.0
+        ports:
+            - "3306:3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: ${DB_DATABASE:-escola}
+        volumes:
+            - ./database/mysql:/var/lib/mysql
+        restart: unless-stopped
+
+    phpmyadmin:
+        container_name: escola_app_phpmyadmin
+        image: phpmyadmin
+        environment:
+            PMA_HOST: mysql
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+        ports:
+            - "8082:80"
+        restart: unless-stopped
+        depends_on:
+            - mysql
