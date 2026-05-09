@@ -22,3 +22,6 @@ perm:
 admin-reset:
 	$(COMPOSE) exec $(APP) php artisan migrate --force
 	$(COMPOSE) exec $(APP) php artisan tinker --execute="\Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0'); \App\Models\User::truncate(); \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1'); \App\Models\User::create(['name' => 'Admin Escola', 'email' => 'admin@escola.com', 'email_verified_at' => now(), 'password' => bcrypt('admin1234')]);"
+
+deploy-dev:
+	./deploy-dev.sh
