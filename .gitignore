@@ -24,3 +24,7 @@ Thumbs.db
 .ftpquota
 .htaccess.phpupgrader.239bbb2a
 .htaccess.phpupgrader.initial
+
+# Docker database volume
+/database/mysql
+/database/mysql/*
