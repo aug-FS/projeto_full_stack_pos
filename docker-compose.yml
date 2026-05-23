@@ -19,7 +19,7 @@ services:
             - "5173:5173"
             - "80:80"
         env_file:
-            - ./.env.local
+            - ./.env
         depends_on:
             - mysql
 

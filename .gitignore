@@ -34,3 +34,5 @@ Thumbs.db
 /server/logs
 .env
 .env.*
+!.env.example
+!.env.local

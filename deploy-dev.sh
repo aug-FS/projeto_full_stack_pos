@@ -34,40 +34,116 @@ set_env() {
     fi
 }
 
-ensure_env_files() {
-    echo "==> Garantindo arquivos .env e .env.local..."
+ensure_gitignore_env() {
+    echo "==> Garantindo .env fora do Git..."
+
+    touch .gitignore
+
+    if ! grep -qxF ".env" .gitignore; then
+        echo ".env" >> .gitignore
+    fi
+
+    if ! grep -qxF ".env.*" .gitignore; then
+        echo ".env.*" >> .gitignore
+    fi
+
+    if ! grep -qxF "!.env.example" .gitignore; then
+        echo "!.env.example" >> .gitignore
+    fi
+
+    if ! grep -qxF "!.env.local" .gitignore; then
+        echo "!.env.local" >> .gitignore
+    fi
+
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+            echo ""
+            echo "ERRO: .env ainda está rastreado pelo Git."
+            echo "Rode:"
+            echo "  git rm --cached .env"
+            echo "  git add .gitignore"
+            echo "  git commit -m \"Remove .env do git\""
+            echo ""
+            exit 1
+        fi
+
+        if [ -f .env.example ] && grep -q "^APP_KEY=base64:" .env.example; then
+            echo ""
+            echo "ERRO: .env.example contém APP_KEY real."
+            echo "Deixe assim:"
+            echo "  APP_KEY="
+            echo ""
+            exit 1
+        fi
+    fi
+
+    echo "==> .env protegido. .env.local não será usado pelo deploy."
+}
+
+ensure_compose_uses_env_normal() {
+    echo "==> Verificando docker-compose..."
+
+    if grep -R "\.env\.local" docker-compose*.yml >/dev/null 2>&1; then
+        echo ""
+        echo "ERRO: docker-compose está usando .env.local."
+        echo "Como o deploy deve usar somente .env, remova qualquer env_file: .env.local do docker-compose."
+        echo ""
+        grep -R "\.env\.local" docker-compose*.yml || true
+        echo ""
+        exit 1
+    fi
+
+    echo "==> docker-compose não referencia .env.local."
+}
+
+ensure_env_file() {
+    echo "==> Garantindo arquivo .env..."
 
     if [ ! -f .env ]; then
-        cp .env.example .env
-    fi
-
-    if [ ! -f .env.local ]; then
-        cp .env .env.local
-    fi
-
-    for FILE in .env .env.local; do
-        set_env "$FILE" APP_NAME "$APP_NAME"
-        set_env "$FILE" APP_ENV "local"
-        set_env "$FILE" APP_DEBUG "true"
-        set_env "$FILE" APP_URL "$APP_URL"
-
-        set_env "$FILE" DB_CONNECTION "mysql"
-        set_env "$FILE" DB_HOST "mysql"
-        set_env "$FILE" DB_PORT "3306"
-        set_env "$FILE" DB_DATABASE "$DB_DATABASE"
-        set_env "$FILE" DB_USERNAME "$DB_USERNAME"
-        set_env "$FILE" DB_PASSWORD "$DB_PASSWORD"
-
-        set_env "$FILE" SESSION_DRIVER "file"
-        set_env "$FILE" CACHE_STORE "file"
-        set_env "$FILE" QUEUE_CONNECTION "sync"
-
-        set_env "$FILE" VITE_APP_NAME "$APP_NAME"
-
-        if ! grep -q "^APP_KEY=" "$FILE"; then
-            echo "APP_KEY=" >> "$FILE"
+        if [ -f .env.example ]; then
+            cp .env.example .env
+        else
+            touch .env
         fi
-    done
+    fi
+
+    set_env ".env" APP_NAME "$APP_NAME"
+    set_env ".env" APP_ENV "local"
+    set_env ".env" APP_DEBUG "true"
+    set_env ".env" APP_URL "$APP_URL"
+
+    set_env ".env" DB_CONNECTION "mysql"
+    set_env ".env" DB_HOST "mysql"
+    set_env ".env" DB_PORT "3306"
+    set_env ".env" DB_DATABASE "$DB_DATABASE"
+    set_env ".env" DB_USERNAME "$DB_USERNAME"
+    set_env ".env" DB_PASSWORD "$DB_PASSWORD"
+
+    set_env ".env" SESSION_DRIVER "file"
+    set_env ".env" CACHE_STORE "file"
+    set_env ".env" QUEUE_CONNECTION "sync"
+
+    set_env ".env" VITE_APP_NAME "$APP_NAME"
+
+    echo "==> Garantindo APP_KEY somente no .env..."
+
+    if ! grep -q "^APP_KEY=base64:" .env; then
+        KEY=$(php -r 'echo "base64:" . base64_encode(random_bytes(32));')
+
+        if grep -q "^APP_KEY=" .env; then
+            sed -i "s|^APP_KEY=.*|APP_KEY=${KEY}|" .env
+        else
+            echo "APP_KEY=${KEY}" >> .env
+        fi
+    fi
+
+    if ! grep -q "^APP_KEY=base64:" .env; then
+        echo "ERRO: APP_KEY não foi gerada corretamente no .env."
+        grep "^APP_KEY=" .env || true
+        exit 1
+    fi
+
+    echo "==> .env OK com APP_KEY."
 }
 
 prepare_landing_assets() {
@@ -170,7 +246,7 @@ install_dependencies() {
 }
 
 prepare_laravel() {
-    echo "==> Preparando Laravel, permissões, caches e APP_KEY..."
+    echo "==> Preparando Laravel dentro do container..."
 
     docker compose exec -T "$APP_SERVICE" sh -s <<'CONTAINER_SCRIPT'
 set -e
@@ -204,49 +280,17 @@ rm -f bootstrap/cache/services.php
 rm -f bootstrap/cache/packages.php
 
 if [ ! -f .env ]; then
-    cp .env.example .env
-fi
-
-if ! grep -q "^APP_KEY=" .env; then
-    echo "APP_KEY=" >> .env
-fi
-
-echo "==> Garantindo APP_KEY manualmente..."
-
-if ! grep -q "^APP_KEY=base64:" .env; then
-    KEY=$(php -r 'echo "base64:" . base64_encode(random_bytes(32));')
-
-    if grep -q "^APP_KEY=" .env; then
-        sed -i "s|^APP_KEY=.*|APP_KEY=${KEY}|" .env
-    else
-        echo "APP_KEY=${KEY}" >> .env
-    fi
-else
-    KEY=$(grep "^APP_KEY=" .env | cut -d "=" -f2-)
-fi
-
-if [ -f .env.local ]; then
-    if grep -q "^APP_KEY=" .env.local; then
-        sed -i "s|^APP_KEY=.*|APP_KEY=${KEY}|" .env.local
-    else
-        echo "APP_KEY=${KEY}" >> .env.local
-    fi
-fi
-
-APP_KEY_VALUE=$(grep "^APP_KEY=" .env | cut -d "=" -f2-)
-
-if [ -z "$APP_KEY_VALUE" ]; then
-    echo "ERRO: APP_KEY está vazia no .env."
+    echo "ERRO: .env não existe dentro do container."
     exit 1
 fi
 
 if ! grep -q "^APP_KEY=base64:" .env; then
-    echo "ERRO: APP_KEY não está no formato esperado."
+    echo "ERRO: APP_KEY não existe no .env dentro do container."
     grep "^APP_KEY=" .env || true
     exit 1
 fi
 
-echo "==> APP_KEY OK."
+echo "==> APP_KEY OK dentro do container."
 
 echo "==> Limpando caches via Artisan..."
 
@@ -261,6 +305,14 @@ php artisan storage:link || true
 chown -R www-data:www-data storage bootstrap/cache public/build || true
 chmod -R 777 storage bootstrap/cache public/build
 CONTAINER_SCRIPT
+}
+
+restart_app_container() {
+    echo "==> Reiniciando container da aplicação..."
+
+    docker compose restart "$APP_SERVICE"
+
+    sleep 3
 }
 
 build_assets() {
@@ -347,12 +399,15 @@ finish_message() {
     echo "Senha:       $ADMIN_PASSWORD"
     echo ""
     echo "Observação:"
-    echo "Este deploy usa Vite em modo build."
-    echo "O arquivo public/hot é removido para o Laravel carregar assets de public/build/manifest.json."
+    echo "Este deploy usa somente .env."
+    echo ".env.local pode existir/subir, mas não é usado pelo deploy."
+    echo "O arquivo public/hot é removido para carregar assets de public/build/manifest.json."
     echo ""
 }
 
-ensure_env_files
+ensure_gitignore_env
+ensure_compose_uses_env_normal
+ensure_env_file
 prepare_landing_assets
 prepare_directories
 fix_local_permissions
@@ -360,6 +415,7 @@ docker_down_up
 wait_mysql
 install_dependencies
 prepare_laravel
+restart_app_container
 build_assets
 run_migrations
 publish_filament_assets
