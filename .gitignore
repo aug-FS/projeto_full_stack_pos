@@ -1,7 +1,12 @@
 *.log
 .DS_Store
-.env.backup
-.env.production
+
+# Env files
+.env
+.env.*
+!.env.example
+!.env.local
+
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -30,7 +35,4 @@ Thumbs.db
 /database/mysql/*
 
 # Local Docker volumes
-/database/mysql
 /server/logs
-!.env.example
-!.env.local
