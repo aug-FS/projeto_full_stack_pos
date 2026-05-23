@@ -32,3 +32,5 @@ Thumbs.db
 # Local Docker volumes
 /database/mysql
 /server/logs
+!.env.example
+!.env.local
