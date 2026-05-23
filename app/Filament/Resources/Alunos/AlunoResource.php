@@ -1,20 +1,29 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\Resources\Alunos;
 
-use App\Filament\Resources\AlunoResource\Pages;
+use App\Filament\Resources\Alunos\AlunoResource\Pages;
 use App\Models\Aluno;
-use Filament\Forms;
-use Filament\Forms\Form;
+use BackedEnum;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class AlunoResource extends Resource
 {
     protected static ?string $model = Aluno::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $navigationLabel = 'Alunos';
 
@@ -22,39 +31,39 @@ class AlunoResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Alunos';
 
-    protected static ?string $navigationGroup = 'Acadêmico';
+    protected static string | UnitEnum | null $navigationGroup = 'Acadêmico';
 
     protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'nome';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Dados do aluno')
+        return $schema
+            ->components([
+                Section::make('Dados do aluno')
                     ->description('Cadastro e edição dos dados principais do aluno.')
                     ->schema([
-                        Forms\Components\TextInput::make('nome')
+                        TextInput::make('nome')
                             ->label('Nome')
                             ->placeholder('Ex: Ana Souza')
                             ->required()
                             ->maxLength(255),
 
-                        Forms\Components\TextInput::make('turma')
+                        TextInput::make('turma')
                             ->label('Turma')
                             ->placeholder('Ex: 3º Ano A')
                             ->required()
                             ->maxLength(255),
 
-                        Forms\Components\TextInput::make('matricula')
+                        TextInput::make('matricula')
                             ->label('Matrícula')
                             ->placeholder('Ex: 2026001')
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
 
-                        Forms\Components\TextInput::make('email')
+                        TextInput::make('email')
                             ->label('E-mail')
                             ->placeholder('Ex: aluno@escola.com')
                             ->email()
@@ -62,7 +71,7 @@ class AlunoResource extends Resource
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
 
-                        Forms\Components\Select::make('situacao')
+                        Select::make('situacao')
                             ->label('Situação')
                             ->options([
                                 'Ativo' => 'Ativo',
@@ -80,26 +89,26 @@ class AlunoResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nome')
+                TextColumn::make('nome')
                     ->label('Nome')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('turma')
+                TextColumn::make('turma')
                     ->label('Turma')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('matricula')
+                TextColumn::make('matricula')
                     ->label('Matrícula')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('email')
+                TextColumn::make('email')
                     ->label('E-mail')
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('situacao')
+                TextColumn::make('situacao')
                     ->label('Situação')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -110,13 +119,13 @@ class AlunoResource extends Resource
                     })
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('Atualizado em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
@@ -124,7 +133,7 @@ class AlunoResource extends Resource
             ])
             ->defaultSort('nome')
             ->filters([
-                Tables\Filters\SelectFilter::make('situacao')
+                SelectFilter::make('situacao')
                     ->label('Situação')
                     ->options([
                         'Ativo' => 'Ativo',
@@ -132,16 +141,16 @@ class AlunoResource extends Resource
                         'Transferido' => 'Transferido',
                     ]),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make()
+            ->recordActions([
+                EditAction::make()
                     ->label('Editar'),
 
-                Tables\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->label('Excluir'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
                         ->label('Excluir selecionados'),
                 ]),
             ]);
