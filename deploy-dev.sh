@@ -96,12 +96,14 @@ prepare_directories() {
     mkdir -p \
         database/mysql \
         storage/framework/cache \
+        storage/framework/cache/data \
         storage/framework/sessions \
         storage/framework/views \
         storage/app/public \
         storage/app/livewire-tmp \
         storage/logs \
-        bootstrap/cache
+        bootstrap/cache \
+        public/build
 
     touch storage/logs/laravel.log
 }
@@ -116,7 +118,8 @@ fix_local_permissions() {
     sudo chmod -R 777 \
         "$PROJECT_DIR/storage" \
         "$PROJECT_DIR/bootstrap/cache" \
-        "$PROJECT_DIR/database/mysql"
+        "$PROJECT_DIR/database/mysql" \
+        "$PROJECT_DIR/public/build"
 
     sudo chown -R 999:999 "$PROJECT_DIR/database/mysql" || true
     sudo chmod -R 777 "$PROJECT_DIR/database/mysql"
@@ -174,12 +177,14 @@ set -e
 
 mkdir -p \
     storage/framework/cache \
+    storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \
     storage/app/public \
     storage/app/livewire-tmp \
     storage/logs \
-    bootstrap/cache
+    bootstrap/cache \
+    public/build
 
 touch storage/logs/laravel.log
 
@@ -187,8 +192,8 @@ chmod 1777 /tmp
 
 echo "==> Ajustando permissões dentro do container..."
 
-chown -R www-data:www-data storage bootstrap/cache || true
-chmod -R 777 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache public/build || true
+chmod -R 777 storage bootstrap/cache public/build
 
 echo "==> Removendo caches antigos do Laravel..."
 
@@ -235,7 +240,13 @@ if [ -z "$APP_KEY_VALUE" ]; then
     exit 1
 fi
 
-echo "==> APP_KEY gravada no .env."
+if ! grep -q "^APP_KEY=base64:" .env; then
+    echo "ERRO: APP_KEY não está no formato esperado."
+    grep "^APP_KEY=" .env || true
+    exit 1
+fi
+
+echo "==> APP_KEY OK."
 
 echo "==> Limpando caches via Artisan..."
 
@@ -245,27 +256,37 @@ php artisan route:clear || true
 php artisan view:clear || true
 php artisan optimize:clear || true
 
-echo "==> Validando APP_KEY no arquivo .env..."
-
-if ! grep -q "^APP_KEY=base64:" .env; then
-    echo "ERRO: APP_KEY não está no formato esperado."
-    grep "^APP_KEY=" .env || true
-    exit 1
-fi
-
-echo "==> APP_KEY OK."
-
 php artisan storage:link || true
 
-chown -R www-data:www-data storage bootstrap/cache || true
-chmod -R 777 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache public/build || true
+chmod -R 777 storage bootstrap/cache public/build
 CONTAINER_SCRIPT
 }
 
 build_assets() {
     echo "==> Gerando build do Vite..."
 
-    docker compose exec -T "$APP_SERVICE" npm run build
+    docker compose exec -T "$APP_SERVICE" sh -lc '
+        set -e
+
+        echo "==> Removendo public/hot para evitar Vite dev server..."
+        rm -f public/hot
+
+        echo "==> Rodando npm run build..."
+        npm run build
+
+        echo "==> Validando manifest do Vite..."
+        if [ ! -f public/build/manifest.json ]; then
+            echo "ERRO: public/build/manifest.json não foi gerado."
+            exit 1
+        fi
+
+        echo "==> Manifest gerado com sucesso."
+        ls -la public/build
+
+        chown -R www-data:www-data public/build || true
+        chmod -R 777 public/build
+    '
 }
 
 run_migrations() {
@@ -296,12 +317,20 @@ create_admin_user() {
 "
 }
 
-start_vite_dev() {
-    echo "==> Iniciando Vite em modo DEV..."
+clear_final_cache() {
+    echo "==> Limpando cache final e garantindo modo build..."
 
     docker compose exec -T "$APP_SERVICE" sh -lc '
-        pkill -f "node.*vite" || true
-        nohup npm run dev -- --host 0.0.0.0 > storage/logs/vite.log 2>&1 &
+        rm -f public/hot
+
+        php artisan config:clear || true
+        php artisan cache:clear || true
+        php artisan route:clear || true
+        php artisan view:clear || true
+        php artisan optimize:clear || true
+
+        chown -R www-data:www-data storage bootstrap/cache public/build || true
+        chmod -R 777 storage bootstrap/cache public/build
     '
 }
 
@@ -317,6 +346,10 @@ finish_message() {
     echo "Email:       $ADMIN_EMAIL"
     echo "Senha:       $ADMIN_PASSWORD"
     echo ""
+    echo "Observação:"
+    echo "Este deploy usa Vite em modo build."
+    echo "O arquivo public/hot é removido para o Laravel carregar assets de public/build/manifest.json."
+    echo ""
 }
 
 ensure_env_files
@@ -331,6 +364,6 @@ build_assets
 run_migrations
 publish_filament_assets
 create_admin_user
-start_vite_dev
+clear_final_cache
 fix_local_permissions
 finish_message
