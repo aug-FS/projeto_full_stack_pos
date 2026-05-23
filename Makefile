@@ -1,6 +1,9 @@
 COMPOSE=docker compose
 APP=escola_app_php
 
+PROJECT_NAME=projeto_full_stack_pos
+f ?= $(PROJECT_NAME)
+
 rebuild:
 	$(COMPOSE) build --no-cache
 	$(COMPOSE) up -d
@@ -12,12 +15,7 @@ p:
 	$(COMPOSE) exec $(APP) bash
 
 perm:
-	sudo chown -R $(USER):$(USER) .
-	chmod -R 775 .
-	chmod -R 775 storage bootstrap/cache
-	docker compose exec escola_app_php chmod 1777 /tmp
-	docker compose exec escola_app_php chown -R www-data:www-data storage bootstrap/cache
-	docker compose exec escola_app_php chmod -R 775 storage bootstrap/cache
+	sudo chmod -R 777 ../$(f)/
 
 admin-reset:
 	$(COMPOSE) exec $(APP) php artisan migrate --force
