@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Alunos;
 
-use App\Filament\Resources\Alunos\AlunoResource\Pages;
+use App\Filament\Resources\Alunos\Pages;
 use App\Models\Aluno;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -157,11 +157,11 @@ class AlunoResource extends Resource
     }
 
     public static function getPages(): array
-    {
-        return [
-            'index' => Pages\ListAlunos::route('/'),
-            'create' => Pages\CreateAluno::route('/create'),
-            'edit' => Pages\EditAluno::route('/{record}/edit'),
-        ];
-    }
+{
+    return [
+        'index' => Pages\ListAlunos::route('/'),
+        'create' => Pages\CreateAluno::route('/create'),
+        'edit' => Pages\EditAluno::route('/{record}/edit'),
+    ];
+}
 }
