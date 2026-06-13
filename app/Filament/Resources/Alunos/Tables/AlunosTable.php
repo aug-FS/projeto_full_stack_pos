@@ -16,7 +16,9 @@ class AlunosTable
             ->columns([
                 TextColumn::make('nome')
                     ->searchable(),
-                TextColumn::make('turma')
+                TextColumn::make('turmas.nome')
+                    ->badge()
+                    ->label('Turma')
                     ->searchable(),
                 TextColumn::make('matricula')
                     ->searchable(),
@@ -24,6 +26,13 @@ class AlunosTable
                     ->label('Email address')
                     ->searchable(),
                 TextColumn::make('situacao')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Ativo' => 'success',
+                        'Inativo' => 'gray',
+                        'Transferido' => 'warning',
+                        default => 'gray',
+                    })
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()

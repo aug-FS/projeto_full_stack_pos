@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Alunos\Schemas;
 
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
@@ -13,8 +14,12 @@ class AlunoForm
             ->components([
                 TextInput::make('nome')
                     ->required(),
-                TextInput::make('turma')
-                    ->required(),
+                Select::make('turmas')
+                    ->relationship('turmas', 'nome')
+                    ->preload()
+                    ->searchable()
+                    ->required()
+                    ->label('Turma'),
                 TextInput::make('matricula')
                     ->required(),
                 TextInput::make('email')

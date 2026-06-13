@@ -50,11 +50,12 @@ class AlunoResource extends Resource
                             ->required()
                             ->maxLength(255),
 
-                        TextInput::make('turma')
+                        Select::make('turmas')
                             ->label('Turma')
-                            ->placeholder('Ex: 3º Ano A')
-                            ->required()
-                            ->maxLength(255),
+                            ->relationship('turmas', 'nome')
+                            ->preload()
+                            ->searchable()
+                            ->required(),
 
                         TextInput::make('matricula')
                             ->label('Matrícula')
@@ -94,10 +95,10 @@ class AlunoResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('turma')
+                TextColumn::make('turmas.nome')
                     ->label('Turma')
-                    ->searchable()
-                    ->sortable(),
+                    ->badge()
+                    ->searchable(),
 
                 TextColumn::make('matricula')
                     ->label('Matrícula')

@@ -110,6 +110,31 @@
             display: block;
         }
 
+        .teachers-turmas-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid var(--school-border);
+        }
+
+        .teachers-turma-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .teachers-turma-item input {
+            width: auto;
+            margin: 0;
+        }
+
         .teachers-actions {
             display: flex;
             gap: 12px;
@@ -289,6 +314,18 @@
                 </select>
                 @error('situacao') <span class="teachers-field-error">{{ $message }}</span> @enderror
 
+                <label>Vincular Turmas</label>
+                <div class="teachers-turmas-list">
+                    @forelse($this->getAllTurmas() as $turma)
+                        <label class="teachers-turma-item">
+                            <input type="checkbox" wire:model="turmasSelecionadas" value="{{ $turma->id }}">
+                            <span>{{ $turma->nome }} ({{ $turma->serie }})</span>
+                        </label>
+                    @empty
+                        <span style="color: var(--school-muted); font-size: 13px;">Nenhuma turma cadastrada.</span>
+                    @endforelse
+                </div>
+
                 <div class="teachers-actions">
                     <button type="submit" class="teachers-btn-primary">
                         {{ $editingId ? 'Salvar alterações' : 'Cadastrar' }}
@@ -323,6 +360,7 @@
                             <tr>
                                 <th>Nome</th>
                                 <th>Disciplina</th>
+                                <th>Turmas</th>
                                 <th>Email</th>
                                 <th>Telefone</th>
                                 <th>Situação</th>
@@ -335,6 +373,17 @@
                                 <tr>
                                     <td>{{ $professor->nome }}</td>
                                     <td>{{ $professor->disciplina }}</td>
+                                    <td>
+                                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                            @forelse($professor->turmas as $turma)
+                                                <span class="teachers-status-pill teachers-status-ativo" style="background: #e0f2fe; color: #0369a1; font-size: 11px;">
+                                                    {{ $turma->nome }}
+                                                </span>
+                                            @empty
+                                                <span style="color: var(--school-muted); font-size: 11px;">Nenhuma</span>
+                                            @endforelse
+                                        </div>
+                                    </td>
                                     <td>{{ $professor->email }}</td>
                                     <td>{{ $professor->telefone ?? '—' }}</td>
                                     <td>
@@ -365,7 +414,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6">
+                                    <td colspan="7">
                                         <div class="teachers-empty-state">
                                             Nenhum professor cadastrado ainda.
                                         </div>
